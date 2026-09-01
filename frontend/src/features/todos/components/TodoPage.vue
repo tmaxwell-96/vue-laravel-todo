@@ -9,7 +9,7 @@ import TodoFilter from './TodoFilter.vue'
 
 const authStore = useAuthStore()
 const { mutate: logout } = useLogout()
-const { todos, isPending } = useTodos()
+const { todos, isPending, addError, toggleError, removeError } = useTodos()
 const { filter, filteredTodos } = useTodoFilter(() => todos.value)
 </script>
 
@@ -26,7 +26,7 @@ const { filter, filteredTodos } = useTodoFilter(() => todos.value)
           </h1>
           <button
             @click="logout()"
-            class="text-sm text-slate-400 hover:text-slate-600 mb-1 transition-colors"
+            class="text-sm text-slate-500 hover:text-slate-700 mb-1 transition-colors"
           >
             Log out
           </button>
@@ -35,6 +35,16 @@ const { filter, filteredTodos } = useTodoFilter(() => todos.value)
 
       <div class="bg-white rounded-3xl shadow-sm p-6 space-y-5">
         <TodoForm />
+
+        <p v-if="addError" class="text-red-400 text-xs text-center">
+          Failed to add todo. Please try again.
+        </p>
+        <p v-if="toggleError" class="text-red-400 text-xs text-center">
+          {{ toggleError }}
+        </p>
+        <p v-if="removeError" class="text-red-400 text-xs text-center">
+          {{ removeError }}
+        </p>
 
         <div v-if="isPending" class="text-sm text-slate-400 text-center py-6">Loading...</div>
 

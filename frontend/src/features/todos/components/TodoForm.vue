@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useTodos } from '../composables/useTodos'
+import SpinnerIcon from '@/components/SpinnerIcon.vue'
 
 const { addTodo, isAdding } = useTodos()
 const title = ref('')
@@ -24,9 +25,10 @@ function onSubmit() {
     <button
       type="submit"
       :disabled="isAdding || !title.trim()"
-      class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-40 transition-colors"
+      class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
     >
-      Add
+      <SpinnerIcon v-if="isAdding" class="w-3.5 h-3.5" />
+      {{ isAdding ? 'Adding...' : 'Add' }}
     </button>
   </form>
 </template>

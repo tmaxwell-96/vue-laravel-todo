@@ -1,8 +1,14 @@
+import { ref } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { createTodo, deleteTodo, fetchTodos, updateTodo } from '../api'
 import type { CreateTodoPayload } from '../types'
 
 const TODOS_KEY = ['todos']
+
+const togglingIds = ref<Set<number>>(new Set())
+const removingIds = ref<Set<number>>(new Set())
+const toggleError = ref<string | null>(null)
+const removeError = ref<string | null>(null)
 
 export function useTodos() {
   const queryClient = useQueryClient()
@@ -12,27 +18,75 @@ export function useTodos() {
     queryFn: fetchTodos,
   })
 
-  const { mutate: addTodo, isPending: isAdding } = useMutation({
+  const {
+    mutate: addTodo,
+    isPending: isAdding,
+    error: addError,
+  } = useMutation({
     mutationFn: (payload: CreateTodoPayload) => createTodo(payload),
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: TODOS_KEY })
+    async onSuccess() {
+      await queryClient.invalidateQueries({ queryKey: TODOS_KEY })
     },
   })
 
-  const { mutate: toggleTodo } = useMutation({
+  const { mutate: _toggleTodo } = useMutation({
     mutationFn: ({ id, is_completed }: { id: number; is_completed: boolean }) =>
       updateTodo(id, { is_completed }),
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: TODOS_KEY })
+    async onSuccess(_data, { id }) {
+      toggleError.value = null
+      await queryClient.invalidateQueries({ queryKey: TODOS_KEY })
+      const next = new Set(togglingIds.value)
+      next.delete(id)
+      togglingIds.value = next
+    },
+    onError(_err, { id }) {
+      toggleError.value = 'Failed to update todo. Please try again.'
+      const next = new Set(togglingIds.value)
+      next.delete(id)
+      togglingIds.value = next
     },
   })
 
-  const { mutate: removeTodo } = useMutation({
+  function toggleTodo(variables: { id: number; is_completed: boolean }) {
+    toggleError.value = null
+    togglingIds.value = new Set(togglingIds.value).add(variables.id)
+    _toggleTodo(variables)
+  }
+
+  const { mutate: _removeTodo } = useMutation({
     mutationFn: (id: number) => deleteTodo(id),
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: TODOS_KEY })
+    async onSuccess(_data, id) {
+      removeError.value = null
+      await queryClient.invalidateQueries({ queryKey: TODOS_KEY })
+      const next = new Set(removingIds.value)
+      next.delete(id)
+      removingIds.value = next
+    },
+    onError(_err, id) {
+      removeError.value = 'Failed to delete todo. Please try again.'
+      const next = new Set(removingIds.value)
+      next.delete(id)
+      removingIds.value = next
     },
   })
 
-  return { todos, isPending, isAdding, addTodo, toggleTodo, removeTodo }
+  function removeTodo(id: number) {
+    removeError.value = null
+    removingIds.value = new Set(removingIds.value).add(id)
+    _removeTodo(id)
+  }
+
+  return {
+    todos,
+    isPending,
+    isAdding,
+    addError,
+    addTodo,
+    toggleTodo,
+    togglingIds,
+    toggleError,
+    removeTodo,
+    removingIds,
+    removeError,
+  }
 }
