@@ -30,6 +30,7 @@ A full-stack todo app built with Vue 3 and Laravel. Built to develop fluency in 
 
 - Register, login, logout via Sanctum session cookies
 - Create, complete, and delete todos
+- Inline edit todo titles (click to edit, Enter to save, Escape to cancel, optimistic update with rollback on error)
 - Filter by All / Active / Completed
 - Per-user data isolation (users only see their own todos)
 - Per-item loading states on toggle and delete
