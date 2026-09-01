@@ -111,6 +111,85 @@ describe('useTodos — toggleTodo', () => {
 
     expect(spy).toHaveBeenCalledWith({ queryKey: ['todos'] })
   })
+
+  it('adds the id to togglingIds while in flight and removes it on success', async () => {
+    let resolve!: (value: any) => void
+    vi.mocked(api.updateTodo).mockImplementation(
+      () => new Promise((res) => { resolve = res }),
+    )
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.toggleTodo({ id: 1, is_completed: true })
+
+    expect(result.togglingIds.value.has(1)).toBe(true)
+
+    await flushPromises()
+    resolve({ id: 1, title: 'Buy milk', is_completed: true, created_at: '' })
+    await flushPromises()
+
+    expect(result.togglingIds.value.has(1)).toBe(false)
+  })
+
+  it('removes the id from togglingIds on error', async () => {
+    vi.mocked(api.updateTodo).mockRejectedValue(new Error('Network error'))
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.toggleTodo({ id: 1, is_completed: true })
+    await flushPromises()
+
+    expect(result.togglingIds.value.has(1)).toBe(false)
+  })
+
+  it('sets toggleError on failure and clears it on the next attempt', async () => {
+    vi.mocked(api.updateTodo).mockRejectedValueOnce(new Error('Network error'))
+    vi.mocked(api.updateTodo).mockResolvedValueOnce({
+      id: 1,
+      title: 'Buy milk',
+      is_completed: true,
+      created_at: '',
+    })
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.toggleTodo({ id: 1, is_completed: true })
+    await flushPromises()
+    expect(result.toggleError.value).toBe('Failed to update todo. Please try again.')
+
+    result.toggleTodo({ id: 1, is_completed: true })
+    expect(result.toggleError.value).toBeNull()
+    await flushPromises()
+  })
+
+  it('tracks multiple simultaneous toggles independently', async () => {
+    let resolveFirst!: (value: any) => void
+    let resolveSecond!: (value: any) => void
+
+    vi.mocked(api.updateTodo)
+      .mockImplementationOnce(() => new Promise((res) => { resolveFirst = res }))
+      .mockImplementationOnce(() => new Promise((res) => { resolveSecond = res }))
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.toggleTodo({ id: 1, is_completed: true })
+    result.toggleTodo({ id: 2, is_completed: false })
+
+    expect(result.togglingIds.value.has(1)).toBe(true)
+    expect(result.togglingIds.value.has(2)).toBe(true)
+
+    await flushPromises()
+    resolveFirst({ id: 1, title: 'A', is_completed: true, created_at: '' })
+    await flushPromises()
+
+    expect(result.togglingIds.value.has(1)).toBe(false)
+    expect(result.togglingIds.value.has(2)).toBe(true)
+
+    resolveSecond({ id: 2, title: 'B', is_completed: false, created_at: '' })
+    await flushPromises()
+
+    expect(result.togglingIds.value.has(2)).toBe(false)
+  })
 })
 
 describe('useTodos — removeTodo', () => {
@@ -135,5 +214,50 @@ describe('useTodos — removeTodo', () => {
     await flushPromises()
 
     expect(spy).toHaveBeenCalledWith({ queryKey: ['todos'] })
+  })
+
+  it('adds the id to removingIds while in flight and removes it on success', async () => {
+    let resolve!: (value: any) => void
+    vi.mocked(api.deleteTodo).mockImplementation(
+      () => new Promise((res) => { resolve = res }),
+    )
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.removeTodo(3)
+
+    expect(result.removingIds.value.has(3)).toBe(true)
+
+    await flushPromises()
+    resolve(undefined)
+    await flushPromises()
+
+    expect(result.removingIds.value.has(3)).toBe(false)
+  })
+
+  it('removes the id from removingIds on error', async () => {
+    vi.mocked(api.deleteTodo).mockRejectedValue(new Error('Network error'))
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.removeTodo(3)
+    await flushPromises()
+
+    expect(result.removingIds.value.has(3)).toBe(false)
+  })
+
+  it('sets removeError on failure and clears it on the next attempt', async () => {
+    vi.mocked(api.deleteTodo).mockRejectedValueOnce(new Error('Network error'))
+    vi.mocked(api.deleteTodo).mockResolvedValueOnce(undefined)
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.removeTodo(3)
+    await flushPromises()
+    expect(result.removeError.value).toBe('Failed to delete todo. Please try again.')
+
+    result.removeTodo(3)
+    expect(result.removeError.value).toBeNull()
+    await flushPromises()
   })
 })
