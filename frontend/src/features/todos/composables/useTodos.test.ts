@@ -10,6 +10,7 @@ vi.mock('../api', () => ({
   createTodo: vi.fn(),
   updateTodo: vi.fn(),
   deleteTodo: vi.fn(),
+  reorderTodos: vi.fn(),
 }))
 
 function withQueryClient(composableFn: () => ReturnType<typeof useTodos>) {
@@ -378,6 +379,73 @@ describe('useTodos — editTodo', () => {
     const spy = vi.spyOn(queryClient, 'invalidateQueries')
 
     result.editTodo(1, 'Updated title')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['todos'] })
+  })
+})
+
+describe('useTodos — reorderTodos', () => {
+  it('calls reorderTodos with the correct payload', async () => {
+    vi.mocked(api.reorderTodos).mockResolvedValue(undefined)
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.reorderTodos([{ id: 1, order: 0 }, { id: 2, order: 1 }])
+    await flushPromises()
+
+    expect(api.reorderTodos).toHaveBeenCalledWith([{ id: 1, order: 0 }, { id: 2, order: 1 }])
+  })
+
+  it('optimistically updates the cache order before the request resolves', async () => {
+    const existing = [
+      { id: 1, title: 'A', is_completed: false, order: 0, created_at: '' },
+      { id: 2, title: 'B', is_completed: false, order: 1, created_at: '' },
+    ]
+    let resolve!: (value: undefined) => void
+    vi.mocked(api.reorderTodos).mockImplementation(
+      () => new Promise((res) => { resolve = res }),
+    )
+
+    const { result, queryClient } = withQueryClient(() => useTodos())
+    queryClient.setQueryData(['todos'], existing)
+
+    result.reorderTodos([{ id: 1, order: 1 }, { id: 2, order: 0 }])
+    await flushPromises()
+
+    const cached = queryClient.getQueryData<{ id: number; order: number }[]>(['todos'])
+    expect(cached?.[0].id).toBe(2)
+    expect(cached?.[1].id).toBe(1)
+
+    resolve(undefined)
+    await flushPromises()
+  })
+
+  it('rolls back the cache on error', async () => {
+    const existing = [
+      { id: 1, title: 'A', is_completed: false, order: 0, created_at: '' },
+      { id: 2, title: 'B', is_completed: false, order: 1, created_at: '' },
+    ]
+    vi.mocked(api.reorderTodos).mockRejectedValue(new Error('Network error'))
+
+    const { result, queryClient } = withQueryClient(() => useTodos())
+    queryClient.setQueryData(['todos'], existing)
+
+    result.reorderTodos([{ id: 1, order: 1 }, { id: 2, order: 0 }])
+    await flushPromises()
+
+    const cached = queryClient.getQueryData<{ id: number; order: number }[]>(['todos'])
+    expect(cached?.[0].id).toBe(1)
+    expect(cached?.[1].id).toBe(2)
+  })
+
+  it('invalidates the todos query on success', async () => {
+    vi.mocked(api.reorderTodos).mockResolvedValue(undefined)
+
+    const { result, queryClient } = withQueryClient(() => useTodos())
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    result.reorderTodos([{ id: 1, order: 0 }])
     await flushPromises()
 
     expect(spy).toHaveBeenCalledWith({ queryKey: ['todos'] })

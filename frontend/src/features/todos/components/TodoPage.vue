@@ -1,16 +1,31 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { VueDraggable } from 'vue-draggable-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useLogout } from '@/features/auth/composables/useLogout'
 import { useTodos } from '../composables/useTodos'
 import { useTodoFilter } from '../composables/useTodoFilter'
+import type { Todo } from '../types'
 import TodoForm from './TodoForm.vue'
 import TodoItem from './TodoItem.vue'
 import TodoFilter from './TodoFilter.vue'
 
 const authStore = useAuthStore()
 const { mutate: logout } = useLogout()
-const { todos, isPending, addError, toggleError, removeError, editError } = useTodos()
+const { todos, isPending, addError, toggleError, removeError, editError, reorderTodos } = useTodos()
 const { filter, filteredTodos } = useTodoFilter(() => todos.value)
+
+const sortableList = ref<Todo[]>([])
+const isDragging = ref(false)
+
+watch(filteredTodos, (val) => {
+  if (!isDragging.value) sortableList.value = [...val]
+}, { immediate: true })
+
+function onDragEnd() {
+  isDragging.value = false
+  reorderTodos(sortableList.value.map((todo, index) => ({ id: todo.id, order: index })))
+}
 </script>
 
 <template>
@@ -54,13 +69,21 @@ const { filter, filteredTodos } = useTodoFilter(() => todos.value)
         <template v-else>
           <TodoFilter v-model="filter" />
 
-          <div v-if="filteredTodos.length === 0" class="text-sm text-slate-400 text-center py-6">
+          <div v-if="sortableList.length === 0" class="text-sm text-slate-400 text-center py-6">
             Nothing here yet.
           </div>
 
-          <div v-else class="divide-y divide-slate-100">
-            <TodoItem v-for="todo in filteredTodos" :key="todo.id" :todo="todo" />
-          </div>
+          <VueDraggable
+            v-else
+            v-model="sortableList"
+            :disabled="filter !== 'all'"
+            handle=".drag-handle"
+            class="divide-y divide-slate-100"
+            @start="isDragging = true"
+            @end="onDragEnd"
+          >
+            <TodoItem v-for="todo in sortableList" :key="todo.id" :todo="todo" :draggable="filter === 'all'" />
+          </VueDraggable>
         </template>
       </div>
     </div>

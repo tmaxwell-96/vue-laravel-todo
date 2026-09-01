@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import { createTodo, deleteTodo, fetchTodos, updateTodo } from '../api'
+import { createTodo, deleteTodo, fetchTodos, reorderTodos, updateTodo } from '../api'
 import type { CreateTodoPayload, Todo } from '../types'
 
 const TODOS_KEY = ['todos']
@@ -112,6 +112,33 @@ export function useTodos() {
     _editTodo({ id, title })
   }
 
+  const { mutate: _reorderTodos } = useMutation({
+    mutationFn: (items: { id: number; order: number }[]) => reorderTodos(items),
+    async onMutate(items) {
+      await queryClient.cancelQueries({ queryKey: TODOS_KEY })
+      const previous = queryClient.getQueryData<Todo[]>(TODOS_KEY)
+      const orderMap = new Map(items.map((item) => [item.id, item.order]))
+      queryClient.setQueryData<Todo[]>(TODOS_KEY, (old) =>
+        old
+          ?.map((t) => (orderMap.has(t.id) ? { ...t, order: orderMap.get(t.id)! } : t))
+          .sort((a, b) => a.order - b.order) ?? [],
+      )
+      return { previous }
+    },
+    async onSuccess() {
+      await queryClient.invalidateQueries({ queryKey: TODOS_KEY })
+    },
+    onError(_err, _items, context) {
+      if (context?.previous) {
+        queryClient.setQueryData(TODOS_KEY, context.previous)
+      }
+    },
+  })
+
+  function reorderTodosFn(items: { id: number; order: number }[]) {
+    _reorderTodos(items)
+  }
+
   return {
     todos,
     isPending,
@@ -127,5 +154,6 @@ export function useTodos() {
     editTodo,
     editingIds,
     editError,
+    reorderTodos: reorderTodosFn,
   }
 }

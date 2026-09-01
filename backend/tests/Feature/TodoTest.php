@@ -125,3 +125,47 @@ describe('DELETE /todos/{id}', function () {
         $this->deleteJson("/api/todos/{$todo->id}")->assertStatus(401);
     });
 });
+
+describe('PATCH /todos/reorder', function () {
+    it('updates the order of the authenticated user\'s todos', function () {
+        $user = User::factory()->create();
+        $a = Todo::create(['user_id' => $user->id, 'title' => 'A', 'order' => 0]);
+        $b = Todo::create(['user_id' => $user->id, 'title' => 'B', 'order' => 1]);
+
+        $this->actingAs($user)
+            ->patchJson('/api/todos/reorder', [
+                ['id' => $a->id, 'order' => 1],
+                ['id' => $b->id, 'order' => 0],
+            ])
+            ->assertStatus(204);
+
+        $this->assertDatabaseHas('todos', ['id' => $a->id, 'order' => 1]);
+        $this->assertDatabaseHas('todos', ['id' => $b->id, 'order' => 0]);
+    });
+
+    it('does not update todos belonging to another user', function () {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $todo = Todo::create(['user_id' => $other->id, 'title' => 'Theirs', 'order' => 0]);
+
+        $this->actingAs($user)
+            ->patchJson('/api/todos/reorder', [
+                ['id' => $todo->id, 'order' => 5],
+            ])
+            ->assertStatus(204);
+
+        $this->assertDatabaseHas('todos', ['id' => $todo->id, 'order' => 0]);
+    });
+
+    it('returns 422 when payload is malformed', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patchJson('/api/todos/reorder', [['title' => 'missing id and order']])
+            ->assertStatus(422);
+    });
+
+    it('returns 401 for unauthenticated requests', function () {
+        $this->patchJson('/api/todos/reorder', [])->assertStatus(401);
+    });
+});

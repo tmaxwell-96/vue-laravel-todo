@@ -19,3 +19,7 @@ export async function updateTodo(id: number, payload: UpdateTodoPayload): Promis
 export async function deleteTodo(id: number): Promise<void> {
   await apiClient.delete(`/api/todos/${id}`)
 }
+
+export async function reorderTodos(items: { id: number; order: number }[]): Promise<void> {
+  await apiClient.patch('/api/todos/reorder', items)
+}

@@ -4,7 +4,7 @@ import type { Todo } from '../types'
 import { useTodos } from '../composables/useTodos'
 import SpinnerIcon from '@/components/SpinnerIcon.vue'
 
-const props = defineProps<{ todo: Todo }>()
+const props = defineProps<{ todo: Todo; draggable?: boolean }>()
 
 const { toggleTodo, togglingIds, removeTodo, removingIds, editTodo, editingIds } = useTodos()
 
@@ -45,6 +45,17 @@ function onKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="flex items-center gap-3 py-3.5 group">
+    <span
+      v-if="props.draggable"
+      class="drag-handle flex-shrink-0 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-slate-300 transition-opacity"
+    >
+      <svg class="w-3 h-4" viewBox="0 0 8 14" fill="currentColor">
+        <circle cx="2" cy="2" r="1.2" /><circle cx="6" cy="2" r="1.2" />
+        <circle cx="2" cy="7" r="1.2" /><circle cx="6" cy="7" r="1.2" />
+        <circle cx="2" cy="12" r="1.2" /><circle cx="6" cy="12" r="1.2" />
+      </svg>
+    </span>
+
     <button
       type="button"
       :disabled="isThisToggling || isThisRemoving"

@@ -2,6 +2,7 @@ export interface Todo {
   id: number
   title: string
   is_completed: boolean
+  order: number
   created_at: string
 }
 
