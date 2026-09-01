@@ -2,10 +2,16 @@
 backend/vendor/
 backend/.env
 backend/storage/logs/
+backend/_ide_helper.php
+backend/_ide_helper_models.php
+backend/.phpstorm.meta.php
 
 # Vue
 frontend/node_modules/
 frontend/dist/
+
+# Root (stray installs)
+node_modules/
 
 # OS
 .DS_Store
