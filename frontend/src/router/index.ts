@@ -19,7 +19,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('@/features/todos/components/TodoList.vue'),
+      component: () => import('@/features/todos/components/TodoPage.vue'),
       meta: { requiresAuth: true },
     },
   ],
