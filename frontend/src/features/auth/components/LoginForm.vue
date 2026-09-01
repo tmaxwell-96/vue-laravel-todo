@@ -22,47 +22,48 @@ const onSubmit = handleSubmit((values) => login(values))
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50">
-    <div class="w-full max-w-md bg-white rounded-lg shadow p-8">
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">Log in</h1>
+  <div class="min-h-screen flex items-center justify-center bg-sage-100">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-sm p-8">
+      <p class="text-emerald-700 text-xs font-semibold uppercase tracking-widest mb-2">Welcome back</p>
+      <h1 class="text-2xl font-bold text-slate-800 mb-6">Log in</h1>
 
       <form @submit="onSubmit" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Email</label>
           <input
             v-model="email"
             v-bind="emailAttrs"
             type="email"
-            class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition"
           />
-          <p v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</p>
+          <p v-if="errors.email" class="text-red-400 text-xs mt-1">{{ errors.email }}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Password</label>
           <input
             v-model="password"
             v-bind="passwordAttrs"
             type="password"
-            class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition"
           />
-          <p v-if="errors.password" class="text-red-500 text-xs mt-1">{{ errors.password }}</p>
+          <p v-if="errors.password" class="text-red-400 text-xs mt-1">{{ errors.password }}</p>
         </div>
 
-        <p v-if="error" class="text-red-500 text-sm">Invalid email or password.</p>
+        <p v-if="error" class="text-red-400 text-sm">Invalid email or password.</p>
 
         <button
           type="submit"
           :disabled="isPending"
-          class="w-full bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40 transition-colors"
         >
           {{ isPending ? 'Logging in...' : 'Log in' }}
         </button>
       </form>
 
-      <p class="text-sm text-gray-600 mt-4">
+      <p class="text-sm text-slate-500 mt-5">
         Don't have an account?
-        <RouterLink to="/register" class="text-blue-600 hover:underline">Register</RouterLink>
+        <RouterLink to="/register" class="text-emerald-600 hover:underline font-medium">Register</RouterLink>
       </p>
     </div>
   </div>
