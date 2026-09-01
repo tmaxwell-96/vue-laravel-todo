@@ -261,3 +261,125 @@ describe('useTodos — removeTodo', () => {
     await flushPromises()
   })
 })
+
+describe('useTodos — editTodo', () => {
+  it('calls updateTodo with id and title', async () => {
+    vi.mocked(api.updateTodo).mockResolvedValue({
+      id: 1,
+      title: 'Updated title',
+      is_completed: false,
+      created_at: '',
+    })
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.editTodo(1, 'Updated title')
+    await flushPromises()
+
+    expect(api.updateTodo).toHaveBeenCalledWith(1, { title: 'Updated title' })
+  })
+
+  it('optimistically updates the cache before the request resolves', async () => {
+    const existing = [{ id: 1, title: 'Old title', is_completed: false, created_at: '' }]
+    vi.mocked(api.fetchTodos).mockResolvedValue(existing)
+
+    let resolve!: (value: any) => void
+    vi.mocked(api.updateTodo).mockImplementation(
+      () => new Promise((res) => { resolve = res }),
+    )
+
+    const { result, queryClient } = withQueryClient(() => useTodos())
+    await flushPromises()
+
+    result.editTodo(1, 'Updated title')
+    await flushPromises()
+
+    const cached = queryClient.getQueryData<{ title: string }[]>(['todos'])
+    expect(cached?.[0].title).toBe('Updated title')
+
+    resolve({ id: 1, title: 'Updated title', is_completed: false, created_at: '' })
+    await flushPromises()
+  })
+
+  it('rolls back the cache on error', async () => {
+    const existing = [{ id: 1, title: 'Old title', is_completed: false, created_at: '' }]
+    vi.mocked(api.fetchTodos).mockResolvedValue(existing)
+    vi.mocked(api.updateTodo).mockRejectedValue(new Error('Network error'))
+
+    const { result, queryClient } = withQueryClient(() => useTodos())
+    await flushPromises()
+
+    result.editTodo(1, 'Updated title')
+    await flushPromises()
+
+    const cached = queryClient.getQueryData<{ title: string }[]>(['todos'])
+    expect(cached?.[0].title).toBe('Old title')
+  })
+
+  it('adds the id to editingIds while in flight and removes it on success', async () => {
+    let resolve!: (value: any) => void
+    vi.mocked(api.updateTodo).mockImplementation(
+      () => new Promise((res) => { resolve = res }),
+    )
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.editTodo(1, 'Updated title')
+
+    expect(result.editingIds.value.has(1)).toBe(true)
+
+    await flushPromises()
+    resolve({ id: 1, title: 'Updated title', is_completed: false, created_at: '' })
+    await flushPromises()
+
+    expect(result.editingIds.value.has(1)).toBe(false)
+  })
+
+  it('removes the id from editingIds on error', async () => {
+    vi.mocked(api.updateTodo).mockRejectedValue(new Error('Network error'))
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.editTodo(1, 'Updated title')
+    await flushPromises()
+
+    expect(result.editingIds.value.has(1)).toBe(false)
+  })
+
+  it('sets editError on failure and clears it on the next attempt', async () => {
+    vi.mocked(api.updateTodo).mockRejectedValueOnce(new Error('Network error'))
+    vi.mocked(api.updateTodo).mockResolvedValueOnce({
+      id: 1,
+      title: 'Updated title',
+      is_completed: false,
+      created_at: '',
+    })
+
+    const { result } = withQueryClient(() => useTodos())
+
+    result.editTodo(1, 'Updated title')
+    await flushPromises()
+    expect(result.editError.value).toBe('Failed to save todo. Please try again.')
+
+    result.editTodo(1, 'Updated title')
+    expect(result.editError.value).toBeNull()
+    await flushPromises()
+  })
+
+  it('invalidates the todos query on success', async () => {
+    vi.mocked(api.updateTodo).mockResolvedValue({
+      id: 1,
+      title: 'Updated title',
+      is_completed: false,
+      created_at: '',
+    })
+
+    const { result, queryClient } = withQueryClient(() => useTodos())
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    result.editTodo(1, 'Updated title')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['todos'] })
+  })
+})

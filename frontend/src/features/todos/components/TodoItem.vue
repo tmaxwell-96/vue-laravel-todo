@@ -1,15 +1,46 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import type { Todo } from '../types'
 import { useTodos } from '../composables/useTodos'
 import SpinnerIcon from '@/components/SpinnerIcon.vue'
 
 const props = defineProps<{ todo: Todo }>()
 
-const { toggleTodo, togglingIds, removeTodo, removingIds } = useTodos()
+const { toggleTodo, togglingIds, removeTodo, removingIds, editTodo, editingIds } = useTodos()
 
 const isThisToggling = computed(() => togglingIds.value.has(props.todo.id))
 const isThisRemoving = computed(() => removingIds.value.has(props.todo.id))
+const isThisEditing = computed(() => editingIds.value.has(props.todo.id))
+
+const isEditMode = ref(false)
+const editValue = ref('')
+const inputRef = ref<HTMLInputElement | null>(null)
+
+function enterEditMode() {
+  if (props.todo.is_completed || isThisToggling.value || isThisRemoving.value) return
+  editValue.value = props.todo.title
+  isEditMode.value = true
+  nextTick(() => inputRef.value?.focus())
+}
+
+function commitEdit() {
+  const trimmed = editValue.value.trim()
+  if (!trimmed || trimmed === props.todo.title) {
+    cancelEdit()
+    return
+  }
+  editTodo(props.todo.id, trimmed)
+  isEditMode.value = false
+}
+
+function cancelEdit() {
+  isEditMode.value = false
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') commitEdit()
+  if (e.key === 'Escape') cancelEdit()
+}
 </script>
 
 <template>
@@ -42,15 +73,31 @@ const isThisRemoving = computed(() => removingIds.value.has(props.todo.id))
       </svg>
     </button>
 
+    <input
+      v-if="isEditMode"
+      ref="inputRef"
+      v-model="editValue"
+      :disabled="isThisEditing"
+      @blur="commitEdit"
+      @keydown="onKeydown"
+      class="flex-1 text-sm text-slate-700 bg-transparent border-b border-emerald-400 outline-none pb-0.5"
+    />
+
     <span
+      v-else
+      @click="enterEditMode"
       class="flex-1 text-sm transition-colors"
-      :class="props.todo.is_completed ? 'line-through text-slate-400' : 'text-slate-700'"
+      :class="[
+        props.todo.is_completed ? 'line-through text-slate-400' : 'text-slate-700 cursor-text',
+        isThisEditing ? 'opacity-50' : '',
+      ]"
     >
       {{ props.todo.title }}
+      <SpinnerIcon v-if="isThisEditing" class="inline w-3 h-3 text-emerald-400 ml-1" />
     </span>
 
     <button
-      :disabled="isThisRemoving || isThisToggling"
+      :disabled="isThisRemoving || isThisToggling || isEditMode"
       @click="removeTodo(props.todo.id)"
       class="transition-colors opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center"
     >

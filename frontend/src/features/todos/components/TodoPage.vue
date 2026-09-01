@@ -9,7 +9,7 @@ import TodoFilter from './TodoFilter.vue'
 
 const authStore = useAuthStore()
 const { mutate: logout } = useLogout()
-const { todos, isPending, addError, toggleError, removeError } = useTodos()
+const { todos, isPending, addError, toggleError, removeError, editError } = useTodos()
 const { filter, filteredTodos } = useTodoFilter(() => todos.value)
 </script>
 
@@ -44,6 +44,9 @@ const { filter, filteredTodos } = useTodoFilter(() => todos.value)
         </p>
         <p v-if="removeError" class="text-red-400 text-xs text-center">
           {{ removeError }}
+        </p>
+        <p v-if="editError" class="text-red-400 text-xs text-center">
+          {{ editError }}
         </p>
 
         <div v-if="isPending" class="text-sm text-slate-400 text-center py-6">Loading...</div>

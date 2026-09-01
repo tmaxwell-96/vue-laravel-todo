@@ -1,14 +1,16 @@
 import { ref } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { createTodo, deleteTodo, fetchTodos, updateTodo } from '../api'
-import type { CreateTodoPayload } from '../types'
+import type { CreateTodoPayload, Todo } from '../types'
 
 const TODOS_KEY = ['todos']
 
 const togglingIds = ref<Set<number>>(new Set())
 const removingIds = ref<Set<number>>(new Set())
+const editingIds = ref<Set<number>>(new Set())
 const toggleError = ref<string | null>(null)
 const removeError = ref<string | null>(null)
+const editError = ref<string | null>(null)
 
 export function useTodos() {
   const queryClient = useQueryClient()
@@ -76,6 +78,40 @@ export function useTodos() {
     _removeTodo(id)
   }
 
+  const { mutate: _editTodo } = useMutation({
+    mutationFn: ({ id, title }: { id: number; title: string }) => updateTodo(id, { title }),
+    async onMutate({ id, title }) {
+      await queryClient.cancelQueries({ queryKey: TODOS_KEY })
+      const previous = queryClient.getQueryData<Todo[]>(TODOS_KEY)
+      queryClient.setQueryData<Todo[]>(TODOS_KEY, (old) =>
+        old?.map((t) => (t.id === id ? { ...t, title } : t)) ?? [],
+      )
+      return { previous }
+    },
+    async onSuccess(_data, { id }) {
+      editError.value = null
+      await queryClient.invalidateQueries({ queryKey: TODOS_KEY })
+      const next = new Set(editingIds.value)
+      next.delete(id)
+      editingIds.value = next
+    },
+    onError(_err, { id }, context) {
+      editError.value = 'Failed to save todo. Please try again.'
+      if (context?.previous) {
+        queryClient.setQueryData(TODOS_KEY, context.previous)
+      }
+      const next = new Set(editingIds.value)
+      next.delete(id)
+      editingIds.value = next
+    },
+  })
+
+  function editTodo(id: number, title: string) {
+    editError.value = null
+    editingIds.value = new Set(editingIds.value).add(id)
+    _editTodo({ id, title })
+  }
+
   return {
     todos,
     isPending,
@@ -88,5 +124,8 @@ export function useTodos() {
     removeTodo,
     removingIds,
     removeError,
+    editTodo,
+    editingIds,
+    editError,
   }
 }
