@@ -22,7 +22,7 @@ class AuthController extends Controller
 
         $user = User::create([
             'name' => $data['name'],
-            'email' => $data['email'],
+            'email' => strtolower($data['email']),
             'password' => Hash::make($data['password']),
         ]);
 
@@ -39,6 +39,8 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ]);
+
+        $data['email'] = strtolower($data['email']);
 
         if (!Auth::attempt($data)) {
             throw ValidationException::withMessages([
